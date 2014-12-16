@@ -1,4 +1,4 @@
 frp-synth
 =========
 
-My first FRP (funtional reactive programming) synthesizer built with Qt and sfrp.
+A synthesizer written in C++ using Qt and sfrp (funtional reactive programming library)
