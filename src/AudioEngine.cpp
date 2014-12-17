@@ -2,6 +2,8 @@
 
 #include <QDebug>
 
+#include <sfrp/behavior.hpp>
+
 //!--------------------------------------------------------------------------------------------------------------------
 
 AudioEngine::AudioEngine( QObject* rootObject, QObject *parent )
@@ -26,12 +28,25 @@ void AudioEngine::start()
 
     auto thread = new std::thread( [this] () {
         while ( m_running ) {
+
+            //!--------------------------------------------------------------------------------------------------------
+
             auto frequencyControl = m_root->findChild<QObject*>( "frequencyControl" );
 
-            if ( frequencyControl ) {
-                qDebug() << frequencyControl->property( "value" ).toString();
+            sfrp::Behavior<float> freqKnob = sfrp::Behavior<float>::fromValuePullFunc( [frequencyControl] ( double time )
+            {
+                return boost::make_optional(frequencyControl->property( "value" ).toFloat());
+            });
+
+            boost::optional<float> value = freqKnob.pull( 0.0f);
+            if ( value )
+            {
+                qDebug() << value.value();
             }
-            std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
+
+            std::this_thread::sleep_for( std::chrono::milliseconds( 250 ) );
+
+            //!--------------------------------------------------------------------------------------------------------
         }
     });
     m_thread.reset( thread );
