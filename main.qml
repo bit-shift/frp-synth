@@ -23,7 +23,9 @@ ApplicationWindow {
 
     Item {
         id: controls
+        objectName: "waveformControl"
         height: 250
+        property int state: 1
 
         Item {
             id: waveKnob

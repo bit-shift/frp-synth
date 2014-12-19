@@ -3,7 +3,9 @@ TEMPLATE = app
 QT += qml quick widgets
 
 SOURCES += src/main.cpp \
-    src/AudioEngine.cpp
+    src/AudioEngine.cpp \
+    src/Surface.cpp \
+    src/PortAudio.cpp
 
 RESOURCES += qml.qrc
 
@@ -20,13 +22,17 @@ QMAKE_CXXFLAGS += -std=c++1y
 include(deployment.pri)
 
 HEADERS += \
-    src/AudioEngine.h
+    src/AudioEngine.h \
+    src/Surface.h \
+    src/dsp.h \
+    src/sfrputil.h \
+    src/PortAudio.h
 
 
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../lib/sbase/build/release/ -lsfrp
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../lib/sbase/build/debug/ -lsfrp
-else:unix: LIBS += -L$$PWD/../lib/sbase/build/ -lsfrp
+else:unix: LIBS += -L$$PWD/../lib/sbase/build/ -lsfrp -lportaudio
 
 INCLUDEPATH += $$PWD/../lib/sbase/include
 DEPENDPATH += $$PWD/../lib/sbase/include

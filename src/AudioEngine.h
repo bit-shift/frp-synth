@@ -3,28 +3,53 @@
 #include <chrono>
 #include <thread>
 
+#include "portaudio.h"
+
 #include <QObject>
+#include <QDebug>
+
+#include <sfrp/behavior.hpp>
+
+#include "Surface.h"
 
 class AudioEngine : public QObject
 {
-    Q_OBJECT
-public:
-    explicit AudioEngine(QObject* root, QObject *parent = 0);
-    ~AudioEngine();
+  Q_OBJECT
 
-signals:
+public:
+
+  typedef struct
+  {
+    float left;
+    float right;
+  }
+  AudioSample;
+
+  explicit AudioEngine( const Surface&, QObject *parent = 0);
+  ~AudioEngine() = default;
+
+
+// --------------------------------------------------------------------------------------------------------------------
 
 public slots:
-    void start();
-    void stop();
+  void start();
+  void stop();
 
-    void startStop();
+  void startStop();
 
+// --------------------------------------------------------------------------------------------------------------------
 
 private:
-    std::unique_ptr<std::thread> m_thread = nullptr;
-    QObject* m_root;
+  int pa_callback( const void *inputBuffer,
+                            void *outputBuffer,
+                            unsigned long framesPerBuffer,
+                            const PaStreamCallbackTimeInfo* timeInfo,
+                            PaStreamCallbackFlags statusFlags,
+                            void *userData
+                            );
 
-    bool m_running = false;
+  bool m_running;
+  std::unique_ptr<std::thread> m_thread;
+  Surface m_surface;
 };
 

@@ -1,78 +1,101 @@
 #include "AudioEngine.h"
 
-#include <QDebug>
+#include "sfrputil.h"
 
-#include <sfrp/behavior.hpp>
+#include "dsp.h"
+// --------------------------------------------------------------------------------------------------------------------
 
-//!--------------------------------------------------------------------------------------------------------------------
-
-AudioEngine::AudioEngine( QObject* rootObject, QObject *parent )
-    : QObject( parent ),
-      m_root( rootObject ),
-      m_running( false ),
-      m_thread( nullptr )
+AudioEngine::AudioEngine( const Surface& surface, QObject *parent )
+  : QObject( parent ),
+    m_running( false ),
+    m_thread( nullptr ),
+    m_surface( surface )
 {
+
 }
 
-//!--------------------------------------------------------------------------------------------------------------------
-
-AudioEngine::~AudioEngine()
-{
-}
-
-//!--------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 
 void AudioEngine::start()
 {
-    m_running = true;
+  m_running = true;
 
-    auto thread = new std::thread( [this] () {
-        while ( m_running ) {
+  auto thread = new std::thread( [this] () {
+    //! Main sound synthesis! Pull forrest, pull!
 
-            //!--------------------------------------------------------------------------------------------------------
-
-            auto frequencyControl = m_root->findChild<QObject*>( "frequencyControl" );
-
-            sfrp::Behavior<float> freqKnob = sfrp::Behavior<float>::fromValuePullFunc( [frequencyControl] ( double time )
-            {
-                return boost::make_optional(frequencyControl->property( "value" ).toFloat());
-            });
-
-            boost::optional<float> value = freqKnob.pull( 0.0f);
-            if ( value )
-            {
-                qDebug() << value.value();
-            }
-
-            std::this_thread::sleep_for( std::chrono::milliseconds( 250 ) );
-
-            //!--------------------------------------------------------------------------------------------------------
-        }
-    });
-    m_thread.reset( thread );
+  });
+  m_thread.reset( thread );
 }
 
-//!--------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 
 void AudioEngine::stop()
 {
-    m_running = false;
+  m_running = false;
 
-    if ( !!m_thread ) {
-        m_thread.get()->join();
-    }
-    m_thread.release();
+  if ( !!m_thread ) {
+    m_thread.get()->join();
+  }
+  m_thread.release();
 }
 
-//!--------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 
 void AudioEngine::startStop()
 {
-    if ( !m_running ) {
-        start();
-    } else {
-        stop();
-    }
+  if ( !m_running ) {
+    start();
+  } else {
+    stop();
+  }
 }
 
+// --------------------------------------------------------------------------------------------------------------------
 
+int AudioEngine::pa_callback( const void *inputBuffer,
+                        void *outputBuffer,
+                        unsigned long framesPerBuffer,
+                        const PaStreamCallbackTimeInfo* timeInfo,
+                        PaStreamCallbackFlags statusFlags,
+                        void *userData
+                        )
+{
+  // Cast data passed through stream to our structure.
+  AudioSample *data = ( AudioSample* ) userData;
+  float *out = ( float* ) outputBuffer;
+
+  // Prevent unused variable warning.
+  ( void ) inputBuffer;
+
+  unsigned int i;
+
+  for( i = 0; i < framesPerBuffer; i++ )
+  {
+    // left & right
+    *out++ = data->left;
+    *out++ = data->right;
+
+    // Generate simple sawtooth phaser that ranges between -1.0 and 1.0.
+    data->left += 0.01f;
+
+    // When signal reaches top, drop back down.
+    if( data->left >= 1.0f ) data->left -= 2.0f;
+
+    // higher pitch so we can distinguish left and right.
+    data->right += 0.03f;
+
+    if( data->right >= 1.0f ) data->right -= 2.0f;
+
+    /*
+      auto now = std::chrono::system_clock::now().time_since_epoch().count();
+
+      Behavior<float> oscComp = DSP::osc_sin( m_surface.frequencyControl() );
+
+      auto next = oscComp.pull( now );
+      if ( next ) qDebug() << next.value();
+
+      std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+    */
+  }
+  return 0;
+}
